@@ -321,6 +321,22 @@
   </div>
 </div>
 
+<!-- CONFLICT MODAL -->
+<div class="modal-overlay" id="conflict-modal">
+  <div class="modal-box">
+    <div class="small-label" style="color:#f5a623; margin-bottom:10px;">Session In Progress</div>
+    <div id="conflict-title" style="font-size:16px; font-style:italic; color:#e8e8e0; margin-bottom:8px;"></div>
+    <div style="font-size:12px; color:#555; margin-bottom:24px; line-height:1.5;">You have an unfinished session. Resume it, or discard it and start a new one.</div>
+    <div style="display:flex; gap:10px; margin-bottom:10px;">
+      <button onclick="App.closeConflictModal(); App.goToWorkout();" style="flex:1; background:#f5a623; border:none; border-radius:4px; padding:11px; font-size:11px; letter-spacing:2px; text-transform:uppercase; color:#000; font-weight:700; font-family:monospace;">Resume</button>
+    </div>
+    <div style="display:flex; gap:10px;">
+      <button class="btn-secondary" style="flex:1;" onclick="App.closeConflictModal()">Cancel</button>
+      <button onclick="App.discardAndStart()" style="flex:1; background:none; border:1px solid #f04d4d; border-radius:4px; padding:11px; font-size:11px; letter-spacing:2px; text-transform:uppercase; color:#f04d4d; font-family:monospace;">Discard & Start New</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ─── STORAGE KEYS ─────────────────────────────────────────────────────────────
 const KEY_ACTIVE   = 'mcm:active-session';
@@ -533,19 +549,29 @@ function getLastPerf(exId) {
 
 // ─── APP STATE ────────────────────────────────────────────────────────────────
 let STATE = {
-  session: null,      // active session object
+  session: null,        // active session object
   autoSaveTimer: null,
-  deleteTarget: null, // { date, type } pending delete
+  deleteTarget: null,   // { date, type, sid } pending delete
+  pendingWorkoutId: null, // workout type waiting to start after conflict resolution
 };
 
 // ─── APP CONTROLLER ───────────────────────────────────────────────────────────
 const App = {
 
   init() {
+    // Clean up stale index entries (pre-sid format or data that no longer exists)
+    const rawIndex = lsGet(KEY_INDEX) || [];
+    const cleanIndex = rawIndex.filter(e => {
+      if (!e.sid) return false; // pre-sid entry — remove
+      const data = lsGet(sessionKey(e.date, e.type, e.sid));
+      return data !== null; // remove if data missing
+    });
+    if (cleanIndex.length !== rawIndex.length) {
+      lsSet(KEY_INDEX, cleanIndex);
+    }
     const active = lsGet(KEY_ACTIVE);
     if (active && active.date === todayStr()) {
       STATE.session = active;
-      this.showHome(); // will show resume banner
     }
     this.renderHome();
   },
@@ -571,12 +597,37 @@ const App = {
   showHistory() { this.renderHistory(); this.showScreen('history'); },
 
   startWorkout(workoutId) {
-    // Build fresh session
+    // If there's already an active session, intercept and show conflict modal
+    if (STATE.session) {
+      STATE.pendingWorkoutId = workoutId;
+      const w = WORKOUTS[STATE.session.workoutId];
+      document.getElementById('conflict-title').textContent = w?.label + ' — started ' + fmtDate(STATE.session.date);
+      document.getElementById('conflict-modal').classList.add('active');
+      return;
+    }
+    this._launchWorkout(workoutId);
+  },
+
+  _launchWorkout(workoutId) {
     const session = buildSession(workoutId);
     STATE.session = session;
     lsSet(KEY_ACTIVE, session);
     this.renderWorkout();
     this.showScreen('workout');
+  },
+
+  closeConflictModal() {
+    document.getElementById('conflict-modal').classList.remove('active');
+    STATE.pendingWorkoutId = null;
+  },
+
+  discardAndStart() {
+    const workoutId = STATE.pendingWorkoutId;
+    document.getElementById('conflict-modal').classList.remove('active');
+    STATE.pendingWorkoutId = null;
+    lsDel(KEY_ACTIVE);
+    STATE.session = null;
+    if (workoutId) this._launchWorkout(workoutId);
   },
 
   goToWorkout() {
