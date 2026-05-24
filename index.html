@@ -1,0 +1,928 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MCM Training">
+<title>MCM Strength Training</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; overscroll-behavior: none; }
+  body {
+    background: #0e0e0e;
+    color: #e8e8e0;
+    font-family: 'Georgia', 'Times New Roman', serif;
+    font-size: 16px;
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+  }
+  input { font-family: 'DM Mono', monospace; border-radius: 4px; }
+  input:focus { outline: none; border-color: #c8f04d !important; }
+  button { font-family: 'Georgia', serif; cursor: pointer; }
+  mono { font-family: 'DM Mono', monospace; }
+
+  /* SCREENS */
+  .screen { display: none; min-height: 100vh; flex-direction: column; }
+  .screen.active { display: flex; }
+
+  /* STICKY HEADER */
+  .sticky-header {
+    position: sticky; top: 0; z-index: 100;
+    background: #111;
+    border-bottom: 1px solid #1a1a1a;
+  }
+
+  /* PROGRESS BAR */
+  .progress-bar { height: 2px; background: #1a1a1a; }
+  .progress-fill { height: 100%; background: #c8f04d; transition: width 0.3s ease; width: 0%; }
+
+  /* CARD */
+  .exercise-card {
+    background: #131313;
+    border: 1px solid #1e1e1e;
+    border-radius: 6px;
+    margin-bottom: 8px;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .exercise-card.expanded { border-color: #c8f04d; }
+  .exercise-card.done { background: rgba(200,240,77,0.03); border-color: rgba(200,240,77,0.15); }
+  .exercise-card.done.expanded { border-color: #c8f04d; }
+
+  .card-main {
+    display: grid;
+    grid-template-columns: 40px 1fr auto;
+    align-items: center;
+    padding: 14px;
+    gap: 10px;
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .card-detail { display: none; border-top: 1px solid #1a1a1a; padding: 14px; }
+  .exercise-card.expanded .card-detail { display: block; }
+
+  /* SET INPUTS */
+  .set-input {
+    background: #0a0a0a;
+    border: 1px solid #222;
+    border-radius: 4px;
+    padding: 9px 10px;
+    font-size: 16px;
+    color: #e8e8e0;
+    width: 100%;
+    -webkit-appearance: none;
+  }
+
+  /* CHECK BUTTON */
+  .check-btn {
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    border: 2px solid #2a2a2a;
+    background: none;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; color: #000;
+    flex-shrink: 0;
+    margin-left: 8px;
+    transition: all 0.15s;
+    padding: 0;
+  }
+  .check-btn.checked { background: #c8f04d; border-color: #c8f04d; }
+
+  /* CUE BOX */
+  .cue-box {
+    border-left: 2px solid #f5a623;
+    padding: 10px 12px;
+    background: rgba(245,166,35,0.04);
+    border-radius: 0 3px 3px 0;
+    margin-bottom: 12px;
+  }
+
+  /* LAST PERF */
+  .last-perf-box {
+    background: rgba(255,255,255,0.03);
+    border-radius: 4px;
+    padding: 8px 12px;
+    margin-bottom: 12px;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+  }
+
+  /* MODAL */
+  .modal-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.88);
+    z-index: 999;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .modal-overlay.active { display: flex; }
+  .modal-box {
+    background: #161616;
+    border: 1px solid #2a2a2a;
+    border-radius: 8px;
+    padding: 28px 24px;
+    max-width: 340px;
+    width: 100%;
+  }
+
+  /* FINISH BAR */
+  .finish-bar {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: #111;
+    border-top: 1px solid #1a1a1a;
+    padding: 14px 16px;
+    display: flex;
+    gap: 10px;
+    z-index: 200;
+    padding-bottom: max(14px, env(safe-area-inset-bottom));
+  }
+
+  /* TAGS */
+  .tag {
+    font-size: 9px; letter-spacing: 1px; text-transform: uppercase;
+    padding: 2px 7px; border-radius: 2px;
+    background: rgba(255,255,255,0.05); color: #555;
+    font-family: 'DM Mono', monospace;
+  }
+  .tag.primary { background: rgba(200,240,77,0.12); color: #c8f04d; }
+
+  /* BLOCK DIVIDER */
+  .block-divider {
+    display: flex; align-items: center; gap: 10px;
+    margin: 24px 0 10px;
+    font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: #333;
+    font-family: 'DM Mono', monospace;
+  }
+  .block-divider-line { flex: 1; height: 1px; background: #1a1a1a; }
+
+  /* RESUME BANNER */
+  .resume-banner {
+    background: rgba(200,240,77,0.06);
+    border: 1px solid rgba(200,240,77,0.2);
+    border-radius: 6px;
+    padding: 16px;
+    margin-bottom: 20px;
+    cursor: pointer;
+  }
+
+  /* WORKOUT CARD ON HOME */
+  .workout-select-card {
+    background: #111;
+    border: 1px solid #1e1e1e;
+    border-radius: 8px;
+    padding: 24px;
+    margin-bottom: 12px;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .workout-select-card:active { border-color: #333; }
+  .card-accent-bar {
+    position: absolute; top: 0; left: 0;
+    width: 3px; height: 100%;
+  }
+
+  /* HISTORY CARD */
+  .history-card {
+    background: #111;
+    border: 1px solid #1e1e1e;
+    border-radius: 6px;
+    padding: 14px 16px;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  /* SCROLLABLE BODY */
+  .scroll-body { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 16px 16px 140px; }
+
+  /* UTILITY */
+  .eyebrow { font-size: 10px; letter-spacing: 4px; text-transform: uppercase; color: #444; margin-bottom: 6px; font-family: 'DM Mono', monospace; }
+  .screen-title { font-size: clamp(24px, 5vw, 40px); font-style: italic; color: #e8e8e0; line-height: 1.1; }
+  .pill { display: inline-block; font-size: 10px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; padding: 3px 10px; border-radius: 2px; font-family: 'DM Mono', monospace; }
+  .pill-green { background: #c8f04d; color: #000; }
+  .pill-red { background: #f04d4d; color: #fff; }
+  .small-label { font-size: 9px; letter-spacing: 2px; text-transform: uppercase; font-family: 'DM Mono', monospace; }
+  .btn-primary { flex: 1; background: #c8f04d; color: #000; border: none; border-radius: 4px; padding: 13px; font-size: 12px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; font-family: 'DM Mono', monospace; }
+  .btn-secondary { background: none; border: 1px solid #2a2a2a; border-radius: 4px; padding: 13px 20px; font-size: 11px; color: #555; letter-spacing: 1px; text-transform: uppercase; font-family: 'DM Mono', monospace; }
+  .btn-back { background: none; border: none; color: #444; font-size: 20px; padding: 4px 8px 4px 0; }
+  .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; margin-bottom: 12px; }
+</style>
+</head>
+<body>
+
+<!-- ═══ SCREENS ═══════════════════════════════════════════════════════════════ -->
+
+<!-- HOME -->
+<div id="screen-home" class="screen active">
+  <div style="padding: 36px 24px 24px; border-bottom: 1px solid #1a1a1a;">
+    <div class="eyebrow">Marine Corps Marathon Prep</div>
+    <h1 class="screen-title">Strength<br>Training</h1>
+    <div style="margin-top: 10px; display: flex; gap: 6px;">
+      <span class="pill pill-green">VDOT 48</span>
+      <span class="pill" style="background:#222; color:#888;">THR 175bpm</span>
+    </div>
+  </div>
+  <div class="scroll-body" style="padding-bottom: 40px;">
+    <div id="home-status" style="display:none; text-align:center; padding:10px; font-family:monospace; font-size:12px; color:#c8f04d; letter-spacing:1px;"></div>
+    <div id="resume-banner" class="resume-banner" style="display:none;" onclick="App.goToWorkout()">
+      <div class="small-label" style="color:#c8f04d; margin-bottom:6px;">⟳ Session In Progress</div>
+      <div id="resume-title" style="font-size:15px; color:#e8e8e0; margin-bottom:3px;"></div>
+      <div style="font-size:11px; color:#555; font-family:monospace;">Started today · Tap to resume →</div>
+    </div>
+    <div class="small-label" style="color:#333; margin-bottom:14px;">Select Today's Workout</div>
+    <div class="workout-select-card" onclick="App.startWorkout('tempo')">
+      <div class="card-accent-bar" style="background:#c8f04d;"></div>
+      <div style="padding-left:12px;">
+        <div class="eyebrow" style="color:#555;">Post-Run Supplemental · Same-Day Protocol</div>
+        <div style="font-size:22px; font-style:italic; color:#e8e8e0; margin-bottom:6px;">Tempo Day</div>
+        <div style="font-family:monospace; font-size:11px; color:#555;">~55 min · RPE 6–7</div>
+        <div style="font-size:10px; letter-spacing:2px; text-transform:uppercase; color:#c8f04d; margin-top:10px; font-family:monospace;">Start Session →</div>
+      </div>
+    </div>
+    <div class="workout-select-card" onclick="App.startWorkout('easy')">
+      <div class="card-accent-bar" style="background:#f5a623;"></div>
+      <div style="padding-left:12px;">
+        <div class="eyebrow" style="color:#555;">Morning Strength · Easy Run This Evening</div>
+        <div style="font-size:22px; font-style:italic; color:#e8e8e0; margin-bottom:6px;">Easy Day</div>
+        <div style="font-family:monospace; font-size:11px; color:#555;">~55 min · RPE 7–8 (Block A)</div>
+        <div style="font-size:10px; letter-spacing:2px; text-transform:uppercase; color:#f5a623; margin-top:10px; font-family:monospace;">Start Session →</div>
+      </div>
+    </div>
+    <button class="btn-secondary" style="width:100%; margin-top:8px;" onclick="App.showHistory()">View History</button>
+  </div>
+</div>
+
+<!-- WORKOUT -->
+<div id="screen-workout" class="screen">
+  <div class="sticky-header">
+    <div style="display:flex; align-items:center; gap:12px; padding:14px 16px 10px;">
+      <button class="btn-back" onclick="App.saveAndExit()">←</button>
+      <div id="workout-title" style="font-size:18px; font-style:italic; flex:1;"></div>
+      <div id="workout-counter" style="font-family:monospace; font-size:13px; color:#c8f04d;"></div>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+  </div>
+  <div class="scroll-body" id="workout-body"></div>
+  <div class="finish-bar">
+    <button class="btn-secondary" onclick="App.saveAndExit()">Save & Exit</button>
+    <button class="btn-primary" onclick="App.finishWorkout()">Finish Session ✓</button>
+  </div>
+</div>
+
+<!-- HISTORY -->
+<div id="screen-history" class="screen">
+  <div class="sticky-header" style="padding:16px 20px;">
+    <div style="display:flex; align-items:center; gap:12px; margin-bottom:10px;">
+      <button class="btn-back" onclick="App.showHome()">←</button>
+      <div style="font-size:20px; font-style:italic; flex:1;">Session History</div>
+      <button id="export-btn" onclick="App.exportData()" style="background:none; border:1px solid #2a2a2a; border-radius:4px; padding:7px 12px; font-size:10px; letter-spacing:2px; text-transform:uppercase; color:#c8f04d; font-family:monospace;">Export</button>
+    </div>
+    <div style="display:flex; align-items:center; gap:12px;">
+      <div id="history-count" class="small-label" style="color:#333;"></div>
+      <div id="export-msg" style="font-size:11px; color:#c8f04d; font-family:monospace;"></div>
+    </div>
+  </div>
+  <div class="scroll-body" id="history-body"></div>
+</div>
+
+<!-- SESSION DETAIL -->
+<div id="screen-detail" class="screen">
+  <div class="sticky-header" style="padding:16px 20px;">
+    <div style="display:flex; align-items:center; gap:12px;">
+      <button class="btn-back" onclick="App.showHistory()">←</button>
+      <div id="detail-title" style="font-size:18px; font-style:italic; flex:1;"></div>
+      <button onclick="App.confirmDelete()" style="background:none; border:1px solid rgba(240,77,77,0.3); border-radius:4px; padding:7px 12px; font-size:10px; letter-spacing:1px; text-transform:uppercase; color:#f04d4d; font-family:monospace;">Delete</button>
+    </div>
+  </div>
+  <div class="scroll-body" id="detail-body"></div>
+</div>
+
+<!-- CONFIRM MODAL -->
+<div class="modal-overlay" id="confirm-modal">
+  <div class="modal-box">
+    <div class="small-label" style="color:#f04d4d; margin-bottom:10px;">Confirm Delete</div>
+    <div id="modal-title" style="font-size:16px; font-style:italic; color:#e8e8e0; margin-bottom:8px;"></div>
+    <div id="modal-sub" style="font-size:12px; color:#555; margin-bottom:24px; line-height:1.5;"></div>
+    <div style="display:flex; gap:10px;">
+      <button class="btn-secondary" style="flex:1;" onclick="App.closeModal()">Cancel</button>
+      <button onclick="App.executeDelete()" style="flex:1; background:#f04d4d; border:none; border-radius:4px; padding:11px; font-size:11px; letter-spacing:2px; text-transform:uppercase; color:#fff; font-weight:700; font-family:monospace;">Delete</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── STORAGE KEYS ─────────────────────────────────────────────────────────────
+const KEY_ACTIVE   = 'mcm:active-session';
+const KEY_ROTATION = 'mcm:rotation-state';
+const KEY_INDEX    = 'mcm:session-index';
+const sessionKey   = (date, type) => `mcm:session:${date}:${type}`;
+
+function lsGet(key) {
+  try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : null; } catch { return null; }
+}
+function lsSet(key, val) {
+  try { localStorage.setItem(key, JSON.stringify(val)); return true; } catch { return false; }
+}
+function lsDel(key) {
+  try { localStorage.removeItem(key); return true; } catch { return false; }
+}
+
+// ─── EXERCISE POOLS ───────────────────────────────────────────────────────────
+const POOLS = {
+  tempo_hinge: [
+    { id:'t_rdl_trap', name:'Romanian Deadlift (Trap Bar)', hasWeight:true, isTime:false, tags:['hamstrings','glutes'], primary:['hamstrings','glutes'], cue:'Hinge at hip, not spine. Soft knee — not a squat. Push the floor away on the way up, think leg press not back lift. Trap bar preferred on a fatigued day.', details:[{l:'Tempo',v:'3-0-1-0 (3s down)'},{l:'Rest',v:'Straight into next exercise'}] },
+    { id:'t_rdl_sl',   name:'Single-Leg Romanian Deadlift', hasWeight:true, isTime:false, tags:['hamstrings','glutes','balance'], primary:['hamstrings','glutes'], cue:'Hinge and reach the DB toward the floor while the trail leg extends behind. Hip stays square — don\'t rotate to reach lower. Slight bend in standing knee.', details:[{l:'Tempo',v:'3-1-1'},{l:'Load',v:'Lighter than bilateral — control is everything'}] },
+    { id:'t_rdl_db',   name:'Dumbbell Romanian Deadlift',   hasWeight:true, isTime:false, tags:['hamstrings','glutes'], primary:['hamstrings','glutes'], cue:'DBs track close to the legs, feel the hamstring stretch at the bottom. Push hips back first — not down. Drive hips forward to stand.', details:[{l:'Tempo',v:'3-0-1-0'},{l:'Feel',v:'Stretch in hamstrings at bottom, not lower back'}] },
+  ],
+  tempo_unilateral: [
+    { id:'t_bss',      name:'Rear-Foot Elevated Split Squat', hasWeight:true, isTime:false, tags:['glutes','quad','single-leg'], primary:['glutes','quad'], cue:'Best unilateral exercise for runners. Lead chest down, not knee forward. Side-to-side strength difference shows directly in your gait — note which leg is weaker.', details:[{l:'Tempo',v:'2-1-1'},{l:'Rest',v:'90s after both legs, then back to hinge'}] },
+    { id:'t_rev_lunge',name:'Deficit Reverse Lunge',           hasWeight:true, isTime:false, tags:['glutes','quad','single-leg'], primary:['glutes','quad'], cue:'Stand on a 2–3 inch plate or step. Step back and lower. The deficit increases hip flexor stretch and glute range. Keep front shin vertical.', details:[{l:'Tempo',v:'2-1-1'},{l:'Equipment',v:'Weight plate or low step for deficit'}] },
+    { id:'t_stepup',   name:'Weighted Step-Up',                hasWeight:true, isTime:false, tags:['glutes','quad','single-leg'], primary:['glutes','quad'], cue:'Drive through the heel of the elevated foot — don\'t push off the back foot. Box height should put your knee at roughly 90° when foot is on box.', details:[{l:'Box height',v:'~16–20 inches'},{l:'Cue',v:'No push-off from trailing leg'}] },
+  ],
+  tempo_pull: [
+    { id:'t_row_sa',     name:'Single-Arm Dumbbell Row', hasWeight:true, isTime:false, tags:['lats','mid-back','posture'], primary:['lats','mid-back'], cue:'Drive elbow back and up into your back pocket. Squeeze 1s at top. No torso rotation for extra range — pelvis stays square. Late-race posture depends on this.', details:[{l:'Tempo',v:'2-1-2'},{l:'Why',v:'Back fatigue collapses arm drive at mile 20+'}] },
+    { id:'t_row_cable',  name:'Seated Cable Row',         hasWeight:true, isTime:false, tags:['lats','rhomboids','posture'], primary:['lats','rhomboids'], cue:'Sit tall. Pull the handle to your lower sternum, not your belly. Squeeze shoulder blades together at the end — don\'t let them wing out on the return.', details:[{l:'Grip',v:'Neutral (palms facing) preferred'},{l:'Tempo',v:'2-1-2'}] },
+    { id:'t_row_incline',name:'Incline Dumbbell Row',     hasWeight:true, isTime:false, tags:['mid-back','rear delt'], primary:['mid-back'], cue:'Chest on a 45° incline bench, DBs hanging. Row both simultaneously. Eliminates lower back involvement — pure upper back work. Great on a fatigued day.', details:[{l:'Tempo',v:'2-1-2'},{l:'Angle',v:'45° incline bench'}] },
+  ],
+  tempo_hip_stability: [
+    { id:'t_band_walk', name:'Lateral Band Walk + Monster Walk', hasWeight:false, isTime:false, tags:['glute med','hip abductor'], primary:['glute med'], cue:'15 lateral steps each direction, then 15 fwd + 15 back. Hips level — no rocking. Outer glute burning by rep 10. If not, go up a band resistance.', details:[{l:'Band',v:'Medium resistance at ankles or above knees'},{l:'Why',v:'Glute med weakness = hip drop = knee valgus = injury'}] },
+    { id:'t_clamshell', name:'Clamshells + Glute Bridge',        hasWeight:false, isTime:false, tags:['glute med','glutes'], primary:['glute med'], cue:'Clamshells: band above knees, feet together, rotate top knee up without rolling the pelvis. Then bridge: squeeze glutes at top for 2s. Do all clamshells then all bridges.', details:[{l:'Reps',v:'15 clamshells + 15 bridges per set'},{l:'Band',v:'Light-medium above knees'}] },
+    { id:'t_abduction', name:'Side-Lying Hip Abduction',          hasWeight:false, isTime:false, tags:['glute med','hip abductor'], primary:['glute med'], cue:'Lie on side, bottom knee bent. Top leg straight, raise 30–40° — no higher. Pause 1s at top. Slow return. Add ankle weight when this becomes easy.', details:[{l:'Reps',v:'Per side as prescribed'},{l:'Progression',v:'Add ankle weight 2.5–5 lbs'}] },
+  ],
+  tempo_core_a: [
+    { id:'t_deadbug', name:'Dead Bug (Contralateral)', hasWeight:false, isTime:false, tags:['anti-extension','deep core'], primary:['anti-extension'], cue:'Lumbar spine FLAT into floor — no arch. Opposite arm + leg extend 4s down. The moment your back peels off, you\'ve gone too far. Best drill for running\'s contralateral arm-drive pattern.', details:[] },
+    { id:'t_hollow',  name:'Hollow Body Hold',          hasWeight:false, isTime:true,  tags:['anti-extension','core'],       primary:['anti-extension'], cue:'Lower back pressed into floor, arms overhead, legs straight and low. If back arches, raise legs higher. Progress by lowering legs over weeks. Pure anterior chain.', details:[{l:'Target',v:'20–30s holds'},{l:'Regression',v:'Bend knees if needed'}] },
+    { id:'t_birddog', name:'Bird Dog',                  hasWeight:false, isTime:false, tags:['anti-extension','lumbar stability'], primary:['lumbar stability'], cue:'On all fours. Extend opposite arm and leg simultaneously. Hold 2s. Zero movement in the torso or pelvis. Think "long" not "high".', details:[{l:'Tempo',v:'2s hold at extension'},{l:'Cue',v:'No hip rotation — stay level'}] },
+  ],
+  tempo_core_b: [
+    { id:'t_pallof',   name:'Pallof Press (Cable or Band)',  hasWeight:false, isTime:false, tags:['anti-rotation','obliques'], primary:['anti-rotation'], cue:'Resist rotation — torso does not move. Press handle straight out from sternum, hold 1s, return. Hips and shoulders square throughout.', details:[{l:'Tempo',v:'2s out, 1s hold, 2s return'},{l:'Setup',v:'Stand perpendicular to anchor, cable at chest height'}] },
+    { id:'t_chop',     name:'Half-Kneeling Chop (Cable)',    hasWeight:false, isTime:false, tags:['anti-rotation','obliques'], primary:['anti-rotation'], cue:'Half-kneeling, cable high. Chop diagonally across body — hips stay square, rotation from thoracic spine. Resist the pull back up. Excellent running transfer.', details:[{l:'Setup',v:'Down knee same side as cable'},{l:'Tempo',v:'2-1-2'}] },
+    { id:'t_suitcase', name:'Suitcase Carry',                hasWeight:true,  isTime:true,  tags:['anti-lateral-flexion','core'], primary:['anti-lateral-flexion'], cue:'Heavy DB in one hand, walk 20–30 steps. Resist leaning toward the weight — stand completely plumb. This is exactly the lateral stability demand of running under fatigue.', details:[{l:'Distance',v:'20–30 steps each side'},{l:'Load',v:'Heavy enough to challenge, not compromise posture'}] },
+  ],
+  tempo_core_c: [
+    { id:'t_copenhagen', name:'Copenhagen Adductor Plank', hasWeight:false, isTime:true, tags:['adductors','pelvic stability'], primary:['adductors'], cue:'Side plank with top foot on bench, bottom leg lifted toward bench. Straight body, no sagging. Inner thigh of bottom leg is working. Criminally underused for runners — pelvic stability at midstance depends on this.', details:[{l:'Setup',v:'Top foot on bench, bottom leg lifted'},{l:'Regression',v:'Drop bottom knee to floor if needed'}] },
+  ],
+  easy_plyo_a: [
+    { id:'e_broadjump', name:'Broad Jump',   hasWeight:false, isTime:false, tags:['power','explosive'], primary:['power'], cue:'Maximum horizontal distance. Swing arms aggressively. Stick the landing — absorb softly, knees tracking toes. Reset fully between reps. Quality of each jump is everything.', details:[{l:'Reps',v:'4–5 per set, full reset between'},{l:'Key',v:'Stop if jump distance drops — set is over'}] },
+    { id:'e_boxjump',   name:'Box Jump',     hasWeight:false, isTime:false, tags:['power','vertical','explosive'], primary:['power'], cue:'Jump for height and intent, not just to get on the box. Land softly in a quarter squat. Step down — never jump down (Achilles). 20–24 inch box.', details:[{l:'Box',v:'20–24 inches'},{l:'Landing',v:'Soft, quiet — absorb with hips not knees'}] },
+    { id:'e_pogos',     name:'Pogo Jumps',   hasWeight:false, isTime:false, tags:['power','ankle stiffness','reactive'], primary:['power'], cue:'Minimal knee bend — this is ankle spring, not squat jump. Think of your legs as pogo sticks. Minimal ground contact time. Directly trains elastic energy return of running.', details:[{l:'Style',v:'Stiff knees, ankle-driven'},{l:'Why',v:'Trains elastic stiffness — key for running economy'}] },
+  ],
+  easy_power_a: [
+    { id:'e_tbdl',    name:'Trap Bar Deadlift',    hasWeight:true, isTime:false, tags:['power','hamstrings','glutes'], primary:['power','hamstrings'], cue:'This is your primary strength lift. Push the floor away — leg press mentality. Hips and shoulders rise together. No morning-star (hips shoot up first). Brace hard before every rep.', details:[{l:'Sets/Reps',v:'4×4 at RPE 8'},{l:'Rest',v:'2.5–3 min full rest'},{l:'Goal',v:'Progressive overload — beat last session\'s load'}] },
+    { id:'e_hipthrust',name:'Barbell Hip Thrust',   hasWeight:true, isTime:false, tags:['power','glutes'], primary:['power','glutes'], cue:'Bench at mid-scapula. Drive through heels — not toes. Squeeze glutes at top, hips fully extended. Don\'t hyperextend the lumbar — ribs down. Pure glute power.', details:[{l:'Sets/Reps',v:'4×4 at RPE 8'},{l:'Rest',v:'2.5–3 min'},{l:'Cue',v:'Ribs down — don\'t arch the low back at the top'}] },
+    { id:'e_hexjump', name:'Hex Bar Jump Squat',    hasWeight:true, isTime:false, tags:['power','explosive','rate of force'], primary:['power'], cue:'Light-moderate load (~30–40% of deadlift max). Drop into quarter squat and explode upward with maximal intent. Land softly. Bridges the gap between strength and plyometric training.', details:[{l:'Load',v:'~30–40% of trap bar deadlift max'},{l:'Sets/Reps',v:'4×4 maximal intent'},{l:'Why',v:'Trains rate of force development directly'}] },
+  ],
+  easy_plyo_b: [
+    { id:'e_latbound',  name:'Lateral Bound',           hasWeight:false, isTime:false, tags:['power','lateral','single-leg'], primary:['power'], cue:'Push off one leg laterally, land on the opposite leg and stick it. Absorb 1–2s, then bound back. Trains lateral force production and single-leg landing — critical for running stability.', details:[{l:'Reps',v:'4 each direction'},{l:'Stick the landing',v:'Hold 1–2s before returning'}] },
+    { id:'e_slhop',     name:'Single-Leg Hop (Linear)', hasWeight:false, isTime:false, tags:['power','single-leg','reactive'], primary:['power'], cue:'Hop forward on one leg, stick the landing, hold 2s. Repeat. Exposes any asymmetry in power output between legs — if one side is weaker, note it.', details:[{l:'Reps',v:'4 each leg'},{l:'Focus',v:'Land quietly, absorb well — quality over distance'}] },
+    { id:'e_depthdrop', name:'Depth Drop',              hasWeight:false, isTime:false, tags:['power','reactive','landing'], primary:['power'], cue:'Step off a box (not jump), land on both feet simultaneously and absorb as quickly and quietly as possible. Trains the eccentric strength that protects knees and ankles in miles 18–26.', details:[{l:'Box',v:'12–18 inches — not too high'},{l:'Goal',v:'Minimal ground contact time, maximum stiffness'}] },
+  ],
+  easy_power_b: [
+    { id:'e_bss_heavy',    name:'Bulgarian Split Squat (Heavy)', hasWeight:true, isTime:false, tags:['power','glutes','quad','single-leg'], primary:['power','glutes'], cue:'Heavier than your tempo day version. Controlled descent, powerful drive up. Note any side difference — it shows directly in your running mechanics.', details:[{l:'Sets/Reps',v:'3×5 at RPE 7–8'},{l:'Rest',v:'90s between legs, 2 min after both'}] },
+    { id:'e_legpress',     name:'Single-Leg Press',               hasWeight:true, isTime:false, tags:['power','quad','glutes','single-leg'], primary:['power','quad'], cue:'One foot centered on the plate. Full range — knee to chest. Drive through the heel. Foot mid-plate for balanced quad/glute stimulus. Don\'t let the knee cave inward.', details:[{l:'Sets/Reps',v:'3×5 each leg at RPE 7–8'},{l:'Cue',v:'Don\'t let the knee cave inward on the press'}] },
+    { id:'e_stepup_heavy', name:'Weighted Step-Up (Heavy)',       hasWeight:true, isTime:false, tags:['power','glutes','quad','single-leg'], primary:['power','glutes'], cue:'Higher box (20–24 inches) with meaningful load. Drive through heel of elevated foot only — no push off from the ground. This is a hip extension power exercise.', details:[{l:'Box',v:'20–24 inches'},{l:'Sets/Reps',v:'3×5 each leg at RPE 7–8'}] },
+  ],
+  easy_push: [
+    { id:'e_incline_press',   name:'Incline Dumbbell Press',       hasWeight:true, isTime:false, tags:['chest','anterior delt','triceps'], primary:['chest'], cue:'45° incline. Full range — DBs at chest level, drive up and slightly together at top. The incline angle trains anterior delt which supports arm drive more than flat pressing.', details:[{l:'Sets/Reps',v:'3×8–10'},{l:'Rest',v:'75–90s'}] },
+    { id:'e_landmine',        name:'Landmine Press (Single-Arm)',   hasWeight:true, isTime:false, tags:['chest','anterior delt','rotational stability'], primary:['chest'], cue:'Half-kneeling or standing. Press the barbell end forward and slightly up. Single-arm forces rotational stability — direct running transfer unlike most pressing movements.', details:[{l:'Sets/Reps',v:'3×8–10 each arm'},{l:'Stance',v:'Half-kneeling preferred'}] },
+    { id:'e_pushup_weighted', name:'Weighted Push-Up',             hasWeight:false, isTime:false, tags:['chest','triceps','scapular stability'], primary:['chest'], cue:'Weight plate on upper back. Full range — chest nearly touches floor. Elbows at 45° not flared. At the top, actively push floor away to protract scapulae. Closes the chain unlike bench.', details:[{l:'Load',v:'25–45 lb plate on upper back'},{l:'Cue',v:'Protract at the top — push floor away'}] },
+  ],
+  easy_hip_flexor: [
+    { id:'e_cable_hf',   name:'Standing Cable Hip Flexion', hasWeight:true,  isTime:false, tags:['hip flexor','psoas'], primary:['hip flexor'], cue:'Cable at ankle, stand facing away. Drive knee up to 90° against resistance. Slow return. The psoas is the most undertrained muscle in marathon runners. This addresses that directly.', details:[{l:'Sets/Reps',v:'3×10 each leg'},{l:'Why',v:'Hip flexor weakness = shortened stride in late race miles'}] },
+    { id:'e_band_march', name:'Banded Marching (Standing)', hasWeight:false, isTime:false, tags:['hip flexor','psoas','gait'], primary:['hip flexor'], cue:'Band around feet, march in place driving knees high. Upright posture — don\'t lean back. Mimics the running movement pattern under load. Feel the front of the hip.', details:[{l:'Reps',v:'20 total steps (10 each leg)'},{l:'Cue',v:'Stay tall — don\'t lean back to lift the knee'}] },
+    { id:'e_psoas_march',name:'Psoas March (Supine)',        hasWeight:false, isTime:false, tags:['hip flexor','psoas','core'], primary:['hip flexor'], cue:'On your back, knees at 90°. Press lower back into floor. Slowly lower one heel toward floor without the back arching, then switch. The psoas works isometrically on the non-moving leg.', details:[{l:'Reps',v:'10 each leg slow'},{l:'Key',v:'Back stays flat — any arch means you\'ve gone too far'}] },
+  ],
+  easy_calf: [
+    { id:'e_slcalf_loaded', name:'Single-Leg Calf Raise (Loaded)', hasWeight:true,  isTime:false, tags:['calf','achilles','ankle'], primary:['calf'], cue:'Stand on edge of a step. Slow 3s down into a deep stretch, explosive drive up. Hold DB or use Smith machine. Achilles tendon health is mission-critical for marathon runners.', details:[{l:'Tempo',v:'3s down (full stretch), explosive up'},{l:'Sets/Reps',v:'3×10–12 — slow eccentric is the key stimulus'}] },
+    { id:'e_seated_calf',   name:'Seated Calf Raise (Heavy)',      hasWeight:true,  isTime:false, tags:['soleus','calf','ankle'], primary:['soleus'], cue:'Seated targets the soleus specifically — different muscle than standing raises. Heavy load, full range. Soleus is critical for marathon endurance — highest slow-twitch fiber percentage.', details:[{l:'Why seated',v:'Targets soleus specifically — distinct from standing raises'},{l:'Sets/Reps',v:'3×10–12'}] },
+    { id:'e_tib_raise',     name:'Tibialis Anterior Raise',        hasWeight:false, isTime:false, tags:['tibialis','shin splints prevention'], primary:['tibialis'], cue:'Stand heels against a wall, raise toes up as high as possible. Slow and controlled. Weak tibialis = shin splints, foot slap, poor dorsiflexion. Balance the calf work.', details:[{l:'Sets/Reps',v:'3×15–20'},{l:'Why',v:'Anterior-posterior balance prevents shin splints and foot slap'}] },
+  ],
+  easy_corrective: [
+    { id:'e_slbalance',  name:'Single-Leg Balance Progression', hasWeight:false, isTime:true,  tags:['ankle stability','proprioception'], primary:['ankle stability'], cue:'30s each leg, eyes open. Progress to eyes closed, then on folded mat. Any wobble is feedback about ankle proprioception deficits that show up as late-race gait breakdown.', details:[{l:'Duration',v:'30s each variation'},{l:'Progress',v:'Eyes open → eyes closed → unstable surface'}] },
+    { id:'e_banded_ankle',name:'Banded Ankle Stability',         hasWeight:false, isTime:false, tags:['ankle','stability','dorsiflexion'], primary:['ankle'], cue:'Band at ankle pulling forward. Step forward against the band\'s pull while maintaining heel contact. Trains ankle dorsiflexion under load — tight ankles cost running economy.', details:[{l:'Reps',v:'10–15 each ankle'},{l:'Focus',v:'Heel stays down against band resistance'}] },
+    { id:'e_foot_dome',   name:'Foot Doming + Toe Spread',        hasWeight:false, isTime:false, tags:['foot strength','arch'], primary:['foot strength'], cue:'Seated: create an arch by pulling the ball of the foot toward the heel without curling the toes. Then spread all toes wide. Foot strength is the base of the entire kinetic chain.', details:[{l:'Reps',v:'10 domes + 10 spreads each foot'},{l:'Why',v:'Weak intrinsic foot muscles = energy leakage every stride'}] },
+  ],
+};
+
+// ─── WORKOUT TEMPLATES ────────────────────────────────────────────────────────
+const WORKOUTS = {
+  tempo: {
+    id:'tempo', label:'Tempo Day', accent:'#c8f04d',
+    coachNote:'Run first, lift 3–6 hours later. No heavy axial loading. This session targets posterior chain, single-leg stability, and anti-rotation core — the runner-specific pattern most gym programs ignore. Moderate weight, controlled tempo, full ROM.',
+    footerNote:'Eat within 30–45 min of finishing. 20–30g protein + carbs. Sleep tonight — adaptation from the tempo and strength work happens overnight.',
+    blocks:[
+      { id:'WU', label:'Warm-Up', meta:'5 min · Activation only', slots:[
+        { pool:'tempo_core_c', sets:2, label:'2×10 each side', rpeLabel:'', fixed:true },
+      ]},
+      { id:'A', label:'Posterior Chain + Unilateral', meta:'Superset A1+A2 · 3 rounds · 90s rest', slots:[
+        { pool:'tempo_hinge',      sets:3, label:'3×8',           rpeLabel:'RPE 6–7' },
+        { pool:'tempo_unilateral', sets:3, label:'3×8 each leg',  rpeLabel:'RPE 6' },
+      ]},
+      { id:'B', label:'Upper Body + Hip Stability', meta:'Superset B1+B2 · 3 rounds · 75s rest', slots:[
+        { pool:'tempo_pull',          sets:3, label:'3×10 each side',    rpeLabel:'RPE 7' },
+        { pool:'tempo_hip_stability', sets:3, label:'3×15 steps/reps',   rpeLabel:'RPE 6' },
+      ]},
+      { id:'C', label:'Core — Anti-Extension + Anti-Rotation', meta:'Circuit · 2 rounds · 60s rest', slots:[
+        { pool:'tempo_core_a', sets:2, label:'2×8 each side',  rpeLabel:'RPE 5' },
+        { pool:'tempo_core_b', sets:2, label:'2×12 each side', rpeLabel:'RPE 6' },
+        { pool:'tempo_core_c', sets:2, label:'2×20s each side',rpeLabel:'RPE 6', fixed:true },
+      ]},
+    ],
+  },
+  easy: {
+    id:'easy', label:'Easy Day', accent:'#f5a623',
+    coachNote:'Strength first this morning, easy run this evening. Block A is your primary stimulus — this is where you chase progressive overload. Plyos before the heavy lift: nervous system lit before you load it. Full rest between sets in Block A. Evening run stays Z1/Z2 (≤154 bpm).',
+    footerNote:'Eat a full meal before the evening run. The strength work this morning is the primary stimulus — protect the easy run\'s aerobic character. HR ≤154 bpm the whole way.',
+    blocks:[
+      { id:'A', label:'Plyo Complex + Power', meta:'4 sets · 2.5–3 min full rest', slots:[
+        { pool:'easy_plyo_a',  sets:3, label:'3×4–5 reps',    rpeLabel:'Maximal intent' },
+        { pool:'easy_power_a', sets:4, label:'4×4',            rpeLabel:'RPE 8' },
+        { pool:'easy_plyo_b',  sets:2, label:'2×4 each',       rpeLabel:'Maximal intent' },
+        { pool:'easy_power_b', sets:3, label:'3×5 each leg',   rpeLabel:'RPE 7–8' },
+      ]},
+      { id:'B', label:'Supplemental', meta:'3 sets · 75–90s rest', slots:[
+        { pool:'easy_push',       sets:3, label:'3×8–10',          rpeLabel:'RPE 7' },
+        { pool:'easy_hip_flexor', sets:3, label:'3×10 each side',  rpeLabel:'RPE 6' },
+        { pool:'easy_calf',       sets:3, label:'3×10–12',         rpeLabel:'RPE 7' },
+      ]},
+      { id:'C', label:'Corrective + Accessory', meta:'2 sets · No rest pressure', slots:[
+        { pool:'easy_corrective', sets:2, label:'2×30s or 2×15', rpeLabel:'RPE 5' },
+      ]},
+    ],
+  },
+};
+
+// ─── ROTATION ENGINE ──────────────────────────────────────────────────────────
+function buildSession(workoutId) {
+  const rotation = lsGet(KEY_ROTATION) || {};
+  const workout = WORKOUTS[workoutId];
+  const selected = {};
+  const newRotation = Object.assign({}, rotation);
+
+  workout.blocks.forEach(block => {
+    block.slots.forEach(slot => {
+      if (selected[slot.pool]) return;
+      const pool = POOLS[slot.pool];
+      if (!pool || pool.length === 0) return;
+      if (pool.length === 1 || slot.fixed) {
+        selected[slot.pool] = pool[0];
+      } else {
+        const lastIdx = newRotation[slot.pool] !== undefined ? newRotation[slot.pool] : -1;
+        const nextIdx = (lastIdx + 1) % pool.length;
+        selected[slot.pool] = pool[nextIdx];
+        newRotation[slot.pool] = nextIdx;
+      }
+    });
+  });
+
+  lsSet(KEY_ROTATION, newRotation);
+
+  const log = {};
+  workout.blocks.forEach(block => {
+    block.slots.forEach(slot => {
+      const key = block.id + ':' + slot.pool;
+      const ex = selected[slot.pool];
+      if (!ex) return;
+      log[key] = {
+        exId: ex.id,
+        exName: ex.name,
+        sets: Array.from({ length: slot.sets }, () => ({ reps:'', weight:'', notes:'' })),
+        completed: false,
+      };
+    });
+  });
+
+  return { workoutId, date: todayStr(), startedAt: new Date().toISOString(), selected, log };
+}
+
+function todayStr() {
+  return new Date().toISOString().split('T')[0];
+}
+
+function fmtDate(d) {
+  return new Date(d + 'T12:00:00').toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric', year:'numeric' });
+}
+
+// ─── LAST PERFORMANCE LOOKUP ──────────────────────────────────────────────────
+function getLastPerf(exId) {
+  const index = lsGet(KEY_INDEX) || [];
+  for (const entry of index) {
+    const s = lsGet(sessionKey(entry.date, entry.type));
+    if (!s || !s.log) continue;
+    for (const logEntry of Object.values(s.log)) {
+      if (logEntry.exId === exId) {
+        const sets = logEntry.sets.filter(s => s.reps || s.weight || s.notes);
+        if (sets.length > 0) return { date: entry.date, sets };
+      }
+    }
+  }
+  return null;
+}
+
+// ─── APP STATE ────────────────────────────────────────────────────────────────
+let STATE = {
+  session: null,      // active session object
+  autoSaveTimer: null,
+  deleteTarget: null, // { date, type } pending delete
+};
+
+// ─── APP CONTROLLER ───────────────────────────────────────────────────────────
+const App = {
+
+  init() {
+    const active = lsGet(KEY_ACTIVE);
+    if (active && active.date === todayStr()) {
+      STATE.session = active;
+      this.showHome(); // will show resume banner
+    }
+    this.renderHome();
+  },
+
+  renderHome() {
+    const active = STATE.session;
+    const resumeBanner = document.getElementById('resume-banner');
+    if (active) {
+      document.getElementById('resume-title').textContent = WORKOUTS[active.workoutId]?.label || '';
+      resumeBanner.style.display = 'block';
+    } else {
+      resumeBanner.style.display = 'none';
+    }
+  },
+
+  showScreen(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById('screen-' + id).classList.add('active');
+    window.scrollTo(0, 0);
+  },
+
+  showHome() { this.renderHome(); this.showScreen('home'); },
+  showHistory() { this.renderHistory(); this.showScreen('history'); },
+
+  startWorkout(workoutId) {
+    // Build fresh session
+    const session = buildSession(workoutId);
+    STATE.session = session;
+    lsSet(KEY_ACTIVE, session);
+    this.renderWorkout();
+    this.showScreen('workout');
+  },
+
+  goToWorkout() {
+    if (!STATE.session) return;
+    this.renderWorkout();
+    this.showScreen('workout');
+  },
+
+  saveAndExit() {
+    lsSet(KEY_ACTIVE, STATE.session);
+    this.showHome();
+  },
+
+  finishWorkout() {
+    const session = STATE.session;
+    if (!session) return;
+    // Archive
+    lsSet(sessionKey(session.date, session.workoutId), Object.assign({}, session, { finishedAt: new Date().toISOString() }));
+    // Update index
+    const index = lsGet(KEY_INDEX) || [];
+    const filtered = index.filter(e => !(e.date === session.date && e.type === session.workoutId));
+    filtered.unshift({ date: session.date, type: session.workoutId });
+    lsSet(KEY_INDEX, filtered);
+    // Clear active
+    lsDel(KEY_ACTIVE);
+    STATE.session = null;
+    // Show home with status
+    this.showHome();
+    const statusEl = document.getElementById('home-status');
+    statusEl.textContent = 'Session saved ✓';
+    statusEl.style.display = 'block';
+    setTimeout(() => { statusEl.style.display = 'none'; }, 3000);
+  },
+
+  // ── WORKOUT RENDER ──────────────────────────────────────────────────────────
+  renderWorkout() {
+    const session = STATE.session;
+    if (!session) return;
+    const workout = WORKOUTS[session.workoutId];
+    const accent = workout.accent;
+
+    document.getElementById('workout-title').textContent = workout.label;
+    document.getElementById('workout-title').style.color = '#e8e8e0';
+
+    this.updateProgress();
+
+    const body = document.getElementById('workout-body');
+    let html = '';
+
+    // Coach note
+    html += `<div style="border-left:2px solid ${accent}; padding:10px 12px; background:rgba(200,240,77,0.03); border-radius:0 4px 4px 0; margin-bottom:4px;">
+      <div class="small-label" style="color:${accent}; margin-bottom:4px;">Coach's Note</div>
+      <div style="font-size:12px; line-height:1.6; color:#777;">${workout.coachNote}</div>
+    </div>`;
+
+    // Blocks
+    workout.blocks.forEach(block => {
+      html += `<div class="block-divider"><span style="color:#555;">${block.label}</span><div class="block-divider-line"></div><span style="color:#2a2a2a; font-size:9px;">${block.meta}</span></div>`;
+
+      block.slots.forEach((slot, slotIdx) => {
+        const slotKey = block.id + ':' + slot.pool;
+        const logEntry = session.log[slotKey];
+        if (!logEntry) return;
+        const ex = session.selected[slot.pool];
+        if (!ex) return;
+
+        const perf = getLastPerf(ex.id);
+        const cardId = 'card-' + slotKey.replace(/:/g,'_');
+        const isDone = logEntry.completed;
+
+        // Tags
+        const tagHtml = ex.tags.map(t =>
+          `<span class="tag ${(ex.primary||[]).includes(t) ? 'primary' : ''}">${t}</span>`
+        ).join(' ');
+
+        // Details
+        let detailsHtml = '';
+        if (ex.details && ex.details.length) {
+          detailsHtml = '<div class="detail-grid">' + ex.details.map(d =>
+            `<div><div class="small-label" style="color:#333; margin-bottom:2px;">${d.l}</div><div style="font-size:11px; color:#666;">${d.v}</div></div>`
+          ).join('') + '</div>';
+        }
+
+        // Last perf
+        let perfHtml = '';
+        if (perf) {
+          const perfRows = perf.sets.map((s, i) => {
+            let parts = [`Set ${i+1}:`];
+            if (s.reps) parts.push(s.reps + (ex.isTime ? 's' : ' reps'));
+            if (s.weight) parts.push(s.weight + ' lbs');
+            if (s.notes) parts.push(s.notes);
+            return `<div style="color:#666;">${parts.join(' · ')}</div>`;
+          }).join('');
+          perfHtml = `<div class="last-perf-box">
+            <div class="small-label" style="color:#333; margin-bottom:4px;">↑ Last Performance · ${fmtDate(perf.date)}</div>
+            ${perfRows}
+          </div>`;
+        }
+
+        // Set inputs
+        let setHeaderHtml = `<div style="display:grid; grid-template-columns:28px 1fr 1fr; gap:6px; margin-bottom:4px; align-items:center;">
+          <div></div>
+          <div class="small-label" style="color:#2a2a2a; text-align:center;">${ex.isTime ? 'Time (sec)' : 'Reps'}</div>
+          <div class="small-label" style="color:#2a2a2a; text-align:center;">${ex.hasWeight ? 'Weight (lbs)' : 'Notes'}</div>
+        </div>`;
+
+        let setsHtml = '';
+        logEntry.sets.forEach((set, idx) => {
+          const inputType1 = 'text';
+          const inputType2 = ex.hasWeight ? 'number' : 'text';
+          const ph1 = ex.isTime ? 'sec' : 'reps';
+          const ph2 = ex.hasWeight ? 'lbs' : 'notes';
+          const inputMode1 = (ex.isTime || !ex.hasWeight) ? 'text' : 'decimal';
+          const inputMode2 = ex.hasWeight ? 'decimal' : 'text';
+          setsHtml += `<div style="display:grid; grid-template-columns:28px 1fr 1fr; gap:6px; margin-bottom:6px; align-items:center;">
+            <div style="font-family:monospace; font-size:11px; color:${accent}; text-align:center;">${idx+1}</div>
+            <input class="set-input" type="${inputType1}" inputmode="${inputMode1}" placeholder="${ph1}"
+              value="${set.reps}" oninput="App.updateSet('${slotKey}',${idx},'reps',this.value)">
+            <input class="set-input" type="${inputType2}" inputmode="${inputMode2}" placeholder="${ph2}"
+              value="${ex.hasWeight ? set.weight : set.notes}"
+              oninput="App.updateSet('${slotKey}',${idx},'${ex.hasWeight ? 'weight' : 'notes'}',this.value)">
+          </div>`;
+        });
+
+        html += `<div class="exercise-card ${isDone ? 'done' : ''}" id="${cardId}">
+          <div class="card-main" onclick="App.toggleCard('${cardId}')">
+            <div style="font-family:monospace; font-size:13px; color:${accent}; text-align:center;">${block.id}${slotIdx+1}</div>
+            <div>
+              <div style="font-size:14px; color:#e8e8e0; margin-bottom:3px; line-height:1.3;">${ex.name}</div>
+              <div style="font-family:monospace; font-size:11px; color:#555;">${slot.label}${slot.rpeLabel ? ' · ' + slot.rpeLabel : ''}</div>
+              <div style="display:flex; gap:4px; flex-wrap:wrap; margin-top:4px;">${tagHtml}</div>
+            </div>
+            <div style="display:flex; align-items:center;">
+              <button class="check-btn ${isDone ? 'checked' : ''}" onclick="event.stopPropagation(); App.toggleComplete('${slotKey}')">${isDone ? '✓' : ''}</button>
+            </div>
+          </div>
+          <div class="card-detail">
+            <div class="cue-box">
+              <div class="small-label" style="color:#f5a623; margin-bottom:4px;">Coaching Cue</div>
+              <div style="font-size:12px; line-height:1.6; color:#777;">${ex.cue}</div>
+            </div>
+            ${detailsHtml}
+            ${perfHtml}
+            <div class="small-label" style="color:${accent}; margin-bottom:8px;">Log Sets</div>
+            ${setHeaderHtml}
+            ${setsHtml}
+          </div>
+        </div>`;
+      });
+    });
+
+    // Footer note
+    html += `<div style="margin-top:20px; padding:14px; background:rgba(255,77,77,0.04); border:1px solid rgba(255,77,77,0.15); border-radius:4px;">
+      <div class="small-label" style="color:#f04d4d; margin-bottom:4px;">Recovery</div>
+      <div style="font-size:12px; line-height:1.6; color:#666;">${workout.footerNote}</div>
+    </div>`;
+
+    body.innerHTML = html;
+  },
+
+  toggleCard(cardId) {
+    const card = document.getElementById(cardId);
+    if (!card) return;
+    card.classList.toggle('expanded');
+  },
+
+  updateSet(slotKey, idx, field, value) {
+    if (!STATE.session) return;
+    const entry = STATE.session.log[slotKey];
+    if (!entry) return;
+    entry.sets[idx][field] = value;
+    this.scheduleAutoSave();
+  },
+
+  toggleComplete(slotKey) {
+    if (!STATE.session) return;
+    const entry = STATE.session.log[slotKey];
+    if (!entry) return;
+    entry.completed = !entry.completed;
+    // Update card class
+    const cardId = 'card-' + slotKey.replace(/:/g,'_');
+    const card = document.getElementById(cardId);
+    if (card) {
+      card.classList.toggle('done', entry.completed);
+      const btn = card.querySelector('.check-btn');
+      if (btn) {
+        btn.classList.toggle('checked', entry.completed);
+        btn.textContent = entry.completed ? '✓' : '';
+      }
+    }
+    this.updateProgress();
+    this.scheduleAutoSave();
+  },
+
+  updateProgress() {
+    if (!STATE.session) return;
+    const log = STATE.session.log;
+    const total = Object.keys(log).length;
+    const done = Object.values(log).filter(v => v.completed).length;
+    const pct = total > 0 ? (done / total * 100) : 0;
+    const fill = document.getElementById('progress-fill');
+    if (fill) fill.style.width = pct + '%';
+    const counter = document.getElementById('workout-counter');
+    if (counter) counter.textContent = done + '/' + total;
+  },
+
+  scheduleAutoSave() {
+    if (STATE.autoSaveTimer) clearTimeout(STATE.autoSaveTimer);
+    STATE.autoSaveTimer = setTimeout(() => {
+      if (STATE.session) lsSet(KEY_ACTIVE, STATE.session);
+    }, 800);
+  },
+
+  // ── HISTORY ─────────────────────────────────────────────────────────────────
+  renderHistory() {
+    const index = lsGet(KEY_INDEX) || [];
+    document.getElementById('history-count').textContent = index.length + ' session' + (index.length !== 1 ? 's' : '') + ' logged';
+    document.getElementById('export-btn').style.opacity = index.length === 0 ? '0.3' : '1';
+
+    const body = document.getElementById('history-body');
+    if (index.length === 0) {
+      body.innerHTML = '<div style="text-align:center; padding:60px 0; color:#333; font-size:13px; line-height:1.8;">No sessions logged yet.<br>Complete a workout to build your history.</div>';
+      return;
+    }
+
+    let html = '';
+    index.forEach((entry, i) => {
+      const w = WORKOUTS[entry.type];
+      const accent = w?.accent || '#888';
+      html += `<div class="history-card">
+        <div style="flex:1; cursor:pointer;" onclick="App.showDetail('${entry.date}','${entry.type}')">
+          <div style="font-size:14px; color:#e8e8e0; margin-bottom:3px;">${fmtDate(entry.date)}</div>
+          <div class="small-label" style="color:${accent};">${w?.label || entry.type}</div>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <button onclick="App.showDetail('${entry.date}','${entry.type}')" style="background:none; border:none; font-size:16px; color:#2a2a2a; padding:4px 6px;">→</button>
+          <button onclick="App.confirmDelete('${entry.date}','${entry.type}')" style="background:none; border:1px solid #2a2a2a; border-radius:4px; padding:5px 10px; font-size:10px; letter-spacing:1px; text-transform:uppercase; color:#444; font-family:monospace;">Delete</button>
+        </div>
+      </div>`;
+    });
+    body.innerHTML = html;
+  },
+
+  showDetail(date, type) {
+    const session = lsGet(sessionKey(date, type));
+    if (!session) return;
+    this.renderDetail(session);
+    this.showScreen('detail');
+  },
+
+  renderDetail(session) {
+    const workout = WORKOUTS[session.workoutId];
+    const accent = workout?.accent || '#c8f04d';
+    document.getElementById('detail-title').textContent = workout?.label || session.workoutId;
+    // Store for delete
+    STATE.deleteTarget = { date: session.date, type: session.workoutId };
+
+    let html = `<div style="font-family:monospace; font-size:11px; color:#444; margin-bottom:20px;">${fmtDate(session.date)}</div>`;
+
+    workout?.blocks.forEach(block => {
+      html += `<div class="block-divider"><span style="color:#555;">${block.label}</span><div class="block-divider-line"></div></div>`;
+      block.slots.forEach(slot => {
+        const slotKey = block.id + ':' + slot.pool;
+        const logEntry = session.log?.[slotKey];
+        if (!logEntry) return;
+        const hasData = logEntry.sets?.some(s => s.reps || s.weight || s.notes);
+        const borderColor = logEntry.completed ? 'rgba(200,240,77,0.12)' : '#1e1e1e';
+        const bg = logEntry.completed ? 'rgba(200,240,77,0.03)' : '#111';
+        html += `<div style="background:${bg}; border:1px solid ${borderColor}; border-radius:6px; padding:14px; margin-bottom:8px;">
+          <div style="font-size:13px; color:#e8e8e0; margin-bottom:6px;">${logEntry.exName}</div>
+          ${logEntry.completed ? `<div style="display:inline-block; font-size:9px; letter-spacing:1px; text-transform:uppercase; padding:2px 8px; border-radius:2px; background:rgba(200,240,77,0.1); color:${accent}; margin-bottom:6px; font-family:monospace;">✓ Completed</div>` : ''}
+          ${hasData ? logEntry.sets.map((s, i) => {
+            if (!s.reps && !s.weight && !s.notes) return '';
+            let parts = [];
+            if (s.reps) parts.push(s.reps + ' reps');
+            if (s.weight) parts.push(s.weight + ' lbs');
+            if (s.notes) parts.push(s.notes);
+            return `<div style="font-family:monospace; font-size:11px; color:#555; margin-bottom:3px;">Set ${i+1}: <span style="color:#888;">${parts.join(' · ')}</span></div>`;
+          }).join('') : ''}
+        </div>`;
+      });
+    });
+
+    document.getElementById('detail-body').innerHTML = html;
+  },
+
+  // ── DELETE ───────────────────────────────────────────────────────────────────
+  confirmDelete(date, type) {
+    STATE.deleteTarget = { date, type };
+    const w = WORKOUTS[type];
+    document.getElementById('modal-title').textContent = fmtDate(date);
+    document.getElementById('modal-sub').textContent = (w?.label || type) + ' · This cannot be undone.';
+    document.getElementById('confirm-modal').classList.add('active');
+  },
+
+  closeModal() {
+    document.getElementById('confirm-modal').classList.remove('active');
+  },
+
+  executeDelete() {
+    const target = STATE.deleteTarget;
+    if (!target) return;
+    // Remove session data
+    lsDel(sessionKey(target.date, target.type));
+    // Update index
+    const index = (lsGet(KEY_INDEX) || []).filter(e => !(e.date === target.date && e.type === target.type));
+    lsSet(KEY_INDEX, index);
+    // If this was also the active session, clear it
+    if (STATE.session && STATE.session.date === target.date && STATE.session.workoutId === target.type) {
+      lsDel(KEY_ACTIVE);
+      STATE.session = null;
+    }
+    this.closeModal();
+    STATE.deleteTarget = null;
+    this.showHistory();
+  },
+
+  // ── EXPORT ───────────────────────────────────────────────────────────────────
+  exportData() {
+    const index = lsGet(KEY_INDEX) || [];
+    if (index.length === 0) return;
+    const sessions = index.map(e => lsGet(sessionKey(e.date, e.type))).filter(Boolean);
+    const payload = {
+      exportedAt: new Date().toISOString(),
+      athlete: 'Kyle Lackinger',
+      vdot: 48,
+      goal: 'Marine Corps Marathon',
+      sessionCount: sessions.length,
+      sessions,
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'mcm-strength-history-' + todayStr() + '.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    const msg = document.getElementById('export-msg');
+    msg.textContent = 'Exported ✓';
+    setTimeout(() => { msg.textContent = ''; }, 3000);
+  },
+};
+
+// Boot
+App.init();
+</script>
+</body>
+</html>
