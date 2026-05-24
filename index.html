@@ -217,6 +217,15 @@
   .btn-secondary { background: none; border: 1px solid #2a2a2a; border-radius: 4px; padding: 13px 20px; font-size: 11px; color: #555; letter-spacing: 1px; text-transform: uppercase; font-family: 'DM Mono', monospace; }
   .btn-back { background: none; border: none; color: #444; font-size: 20px; padding: 4px 8px 4px 0; }
   .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; margin-bottom: 12px; }
+  .session-notes-wrap { margin-top: 20px; }
+  .session-notes-textarea {
+    width: 100%; background: #0a0a0a; border: 1px solid #222; border-radius: 4px;
+    padding: 10px 12px; font-size: 14px; color: #e8e8e0; font-family: 'Georgia', serif;
+    resize: none; line-height: 1.5; height: 80px;
+    -webkit-appearance: none;
+  }
+  .session-notes-textarea:focus { outline: none; border-color: #c8f04d; }
+  .char-counter { font-family: 'DM Mono', monospace; font-size: 10px; text-align: right; margin-top: 4px; transition: color 0.2s; }
 </style>
 </head>
 <body>
@@ -520,7 +529,7 @@ function buildSession(workoutId) {
   });
 
   const sid = Date.now().toString(36);
-  return { workoutId, date: todayStr(), sid, startedAt: new Date().toISOString(), selected, log };
+  return { workoutId, date: todayStr(), sid, startedAt: new Date().toISOString(), selected, log, notes: '' };
 }
 
 function todayStr() {
@@ -783,6 +792,17 @@ const App = {
     html += `<div style="margin-top:20px; padding:14px; background:rgba(255,77,77,0.04); border:1px solid rgba(255,77,77,0.15); border-radius:4px;">
       <div class="small-label" style="color:#f04d4d; margin-bottom:4px;">Recovery</div>
       <div style="font-size:12px; line-height:1.6; color:#666;">${workout.footerNote}</div>
+    </div>
+    <div class="session-notes-wrap">
+      <div class="small-label" style="color:#555; margin-bottom:6px;">Session Notes</div>
+      <textarea
+        class="session-notes-textarea"
+        id="session-notes-input"
+        maxlength="140"
+        placeholder="How did it feel? Anything to flag for next time… (140 chars)"
+        oninput="App.updateSessionNotes(this.value)"
+      >${STATE.session.notes || ''}</textarea>
+      <div class="char-counter" id="notes-char-counter" style="color:#444;">${140 - (STATE.session.notes || '').length} remaining</div>
     </div>`;
 
     body.innerHTML = html;
@@ -819,6 +839,20 @@ const App = {
       }
     }
     this.updateProgress();
+    this.scheduleAutoSave();
+  },
+
+  updateSessionNotes(value) {
+    if (!STATE.session) return;
+    // Enforce 140 char limit defensively (maxlength handles UI)
+    STATE.session.notes = value.slice(0, 140);
+    // Update counter colour
+    const remaining = 140 - STATE.session.notes.length;
+    const counter = document.getElementById('notes-char-counter');
+    if (counter) {
+      counter.textContent = remaining + ' remaining';
+      counter.style.color = remaining <= 20 ? '#f04d4d' : remaining <= 50 ? '#f5a623' : '#444';
+    }
     this.scheduleAutoSave();
   },
 
@@ -885,7 +919,13 @@ const App = {
     // Store for delete
     STATE.deleteTarget = { date: session.date, type: session.workoutId, sid: session.sid };
 
-    let html = `<div style="font-family:monospace; font-size:11px; color:#444; margin-bottom:20px;">${fmtDate(session.date)}</div>`;
+    const noteHtml = session.notes
+      ? `<div style="margin-bottom:20px;">
+           <div class="small-label" style="color:#555; margin-bottom:6px;">Session Notes</div>
+           <div style="font-size:13px; line-height:1.6; color:#888; background:#0f0f0f; border:1px solid #1e1e1e; border-radius:4px; padding:10px 12px;">${session.notes}</div>
+         </div>`
+      : '';
+    let html = `<div style="font-family:monospace; font-size:11px; color:#444; margin-bottom:12px;">${fmtDate(session.date)}</div>${noteHtml}`;
 
     workout?.blocks.forEach(block => {
       html += `<div class="block-divider"><span style="color:#555;">${block.label}</span><div class="block-divider-line"></div></div>`;
