@@ -412,7 +412,7 @@ const POOLS = {
   easy_push: [
     { id:'e_incline_press',   name:'Incline Dumbbell Press',       hasWeight:true, isTime:false, tags:['chest','anterior delt','triceps'], primary:['chest'], cue:'45° incline. Full range — DBs at chest level, drive up and slightly together at top. The incline angle trains anterior delt which supports arm drive more than flat pressing.', details:[{l:'Sets/Reps',v:'3×8–10'},{l:'Rest',v:'75–90s'}] },
     { id:'e_landmine',        name:'Landmine Press (Single-Arm)',   hasWeight:true, isTime:false, tags:['chest','anterior delt','rotational stability'], primary:['chest'], cue:'Half-kneeling or standing. Press the barbell end forward and slightly up. Single-arm forces rotational stability — direct running transfer unlike most pressing movements.', details:[{l:'Sets/Reps',v:'3×8–10 each arm'},{l:'Stance',v:'Half-kneeling preferred'}] },
-    { id:'e_pushup_weighted', name:'Weighted Push-Up',             hasWeight:false, isTime:false, tags:['chest','triceps','scapular stability'], primary:['chest'], cue:'Weight plate on upper back. Full range — chest nearly touches floor. Elbows at 45° not flared. At the top, actively push floor away to protract scapulae. Closes the chain unlike bench.', details:[{l:'Load',v:'25–45 lb plate on upper back'},{l:'Cue',v:'Protract at the top — push floor away'}] },
+    { id:'e_pushup_weighted', name:'Weighted Push-Up',             hasWeight:true, isTime:false, tags:['chest','triceps','scapular stability'], primary:['chest'], cue:'Weight plate on upper back. Full range — chest nearly touches floor. Elbows at 45° not flared. At the top, actively push floor away to protract scapulae. Closes the chain unlike bench.', details:[{l:'Load',v:'25–45 lb plate on upper back'},{l:'Cue',v:'Protract at the top — push floor away'}] },
   ],
   easy_hip_flexor: [
     { id:'e_cable_hf',   name:'Standing Cable Hip Flexion', hasWeight:true,  isTime:false, tags:['hip flexor','psoas'], primary:['hip flexor'], cue:'Cable at ankle, stand facing away. Drive knee up to 90° against resistance. Slow return. The psoas is the most undertrained muscle in marathon runners. This addresses that directly.', details:[{l:'Sets/Reps',v:'3×10 each leg'},{l:'Why',v:'Hip flexor weakness = shortened stride in late race miles'}] },
@@ -740,7 +740,7 @@ const App = {
           const inputType2 = ex.hasWeight ? 'number' : 'text';
           const ph1 = ex.isTime ? 'sec' : 'reps';
           const ph2 = ex.hasWeight ? 'lbs' : 'notes';
-          const inputMode1 = (ex.isTime || !ex.hasWeight) ? 'text' : 'decimal';
+          const inputMode1 = 'decimal'; // always numeric keyboard for reps/time field
           const inputMode2 = ex.hasWeight ? 'decimal' : 'text';
           setsHtml += `<div style="display:grid; grid-template-columns:28px 1fr 1fr; gap:6px; margin-bottom:6px; align-items:center;">
             <div style="font-family:monospace; font-size:11px; color:${accent}; text-align:center;">${idx+1}</div>
