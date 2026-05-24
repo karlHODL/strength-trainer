@@ -326,7 +326,7 @@
 const KEY_ACTIVE   = 'mcm:active-session';
 const KEY_ROTATION = 'mcm:rotation-state';
 const KEY_INDEX    = 'mcm:session-index';
-const sessionKey   = (date, type) => `mcm:session:${date}:${type}`;
+const sessionKey   = (date, type, sid) => `mcm:session:${date}:${type}:${sid}`;
 
 function lsGet(key) {
   try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : null; } catch { return null; }
@@ -503,7 +503,8 @@ function buildSession(workoutId) {
     });
   });
 
-  return { workoutId, date: todayStr(), startedAt: new Date().toISOString(), selected, log };
+  const sid = Date.now().toString(36);
+  return { workoutId, date: todayStr(), sid, startedAt: new Date().toISOString(), selected, log };
 }
 
 function todayStr() {
@@ -518,7 +519,7 @@ function fmtDate(d) {
 function getLastPerf(exId) {
   const index = lsGet(KEY_INDEX) || [];
   for (const entry of index) {
-    const s = lsGet(sessionKey(entry.date, entry.type));
+    const s = lsGet(sessionKey(entry.date, entry.type, entry.sid));
     if (!s || !s.log) continue;
     for (const logEntry of Object.values(s.log)) {
       if (logEntry.exId === exId) {
@@ -593,11 +594,11 @@ const App = {
     const session = STATE.session;
     if (!session) return;
     // Archive
-    lsSet(sessionKey(session.date, session.workoutId), Object.assign({}, session, { finishedAt: new Date().toISOString() }));
+    lsSet(sessionKey(session.date, session.workoutId, session.sid), Object.assign({}, session, { finishedAt: new Date().toISOString() }));
     // Update index
     const index = lsGet(KEY_INDEX) || [];
-    const filtered = index.filter(e => !(e.date === session.date && e.type === session.workoutId));
-    filtered.unshift({ date: session.date, type: session.workoutId });
+    const filtered = index.filter(e => !(e.date === session.date && e.type === session.workoutId && e.sid === session.sid));
+    filtered.unshift({ date: session.date, type: session.workoutId, sid: session.sid });
     lsSet(KEY_INDEX, filtered);
     // Clear active
     lsDel(KEY_ACTIVE);
@@ -806,21 +807,21 @@ const App = {
       const w = WORKOUTS[entry.type];
       const accent = w?.accent || '#888';
       html += `<div class="history-card">
-        <div style="flex:1; cursor:pointer;" onclick="App.showDetail('${entry.date}','${entry.type}')">
+        <div style="flex:1; cursor:pointer;" onclick="App.showDetail('${entry.date}','${entry.type}','${entry.sid}')">
           <div style="font-size:14px; color:#e8e8e0; margin-bottom:3px;">${fmtDate(entry.date)}</div>
           <div class="small-label" style="color:${accent};">${w?.label || entry.type}</div>
         </div>
         <div style="display:flex; align-items:center; gap:8px;">
-          <button onclick="App.showDetail('${entry.date}','${entry.type}')" style="background:none; border:none; font-size:16px; color:#2a2a2a; padding:4px 6px;">→</button>
-          <button onclick="App.confirmDelete('${entry.date}','${entry.type}')" style="background:none; border:1px solid #2a2a2a; border-radius:4px; padding:5px 10px; font-size:10px; letter-spacing:1px; text-transform:uppercase; color:#444; font-family:monospace;">Delete</button>
+          <button onclick="App.showDetail('${entry.date}','${entry.type}','${entry.sid}')" style="background:none; border:none; font-size:16px; color:#2a2a2a; padding:4px 6px;">→</button>
+          <button onclick="App.confirmDelete('${entry.date}','${entry.type}','${entry.sid}')" style="background:none; border:1px solid #2a2a2a; border-radius:4px; padding:5px 10px; font-size:10px; letter-spacing:1px; text-transform:uppercase; color:#444; font-family:monospace;">Delete</button>
         </div>
       </div>`;
     });
     body.innerHTML = html;
   },
 
-  showDetail(date, type) {
-    const session = lsGet(sessionKey(date, type));
+  showDetail(date, type, sid) {
+    const session = lsGet(sessionKey(date, type, sid));
     if (!session) return;
     this.renderDetail(session);
     this.showScreen('detail');
@@ -831,7 +832,7 @@ const App = {
     const accent = workout?.accent || '#c8f04d';
     document.getElementById('detail-title').textContent = workout?.label || session.workoutId;
     // Store for delete
-    STATE.deleteTarget = { date: session.date, type: session.workoutId };
+    STATE.deleteTarget = { date: session.date, type: session.workoutId, sid: session.sid };
 
     let html = `<div style="font-family:monospace; font-size:11px; color:#444; margin-bottom:20px;">${fmtDate(session.date)}</div>`;
 
@@ -863,8 +864,8 @@ const App = {
   },
 
   // ── DELETE ───────────────────────────────────────────────────────────────────
-  confirmDelete(date, type) {
-    STATE.deleteTarget = { date, type };
+  confirmDelete(date, type, sid) {
+    STATE.deleteTarget = { date, type, sid };
     const w = WORKOUTS[type];
     document.getElementById('modal-title').textContent = fmtDate(date);
     document.getElementById('modal-sub').textContent = (w?.label || type) + ' · This cannot be undone.';
@@ -879,12 +880,12 @@ const App = {
     const target = STATE.deleteTarget;
     if (!target) return;
     // Remove session data
-    lsDel(sessionKey(target.date, target.type));
+    lsDel(sessionKey(target.date, target.type, target.sid));
     // Update index
-    const index = (lsGet(KEY_INDEX) || []).filter(e => !(e.date === target.date && e.type === target.type));
+    const index = (lsGet(KEY_INDEX) || []).filter(e => !(e.date === target.date && e.type === target.type && e.sid === target.sid));
     lsSet(KEY_INDEX, index);
     // If this was also the active session, clear it
-    if (STATE.session && STATE.session.date === target.date && STATE.session.workoutId === target.type) {
+    if (STATE.session && STATE.session.date === target.date && STATE.session.workoutId === target.type && STATE.session.sid === target.sid) {
       lsDel(KEY_ACTIVE);
       STATE.session = null;
     }
@@ -897,7 +898,7 @@ const App = {
   exportData() {
     const index = lsGet(KEY_INDEX) || [];
     if (index.length === 0) return;
-    const sessions = index.map(e => lsGet(sessionKey(e.date, e.type))).filter(Boolean);
+    const sessions = index.map(e => lsGet(sessionKey(e.date, e.type, e.sid))).filter(Boolean);
     const payload = {
       exportedAt: new Date().toISOString(),
       athlete: 'Kyle Lackinger',
