@@ -916,10 +916,16 @@ const App = {
 
   // ── DELETE ───────────────────────────────────────────────────────────────────
   confirmDelete(date, type, sid) {
-    STATE.deleteTarget = { date, type, sid };
-    const w = WORKOUTS[type];
-    document.getElementById('modal-title').textContent = fmtDate(date);
-    document.getElementById('modal-sub').textContent = (w?.label || type) + ' · This cannot be undone.';
+    // Called from history list with args, or from detail view with no args
+    // (detail view pre-populates STATE.deleteTarget via renderDetail)
+    if (date !== undefined) {
+      STATE.deleteTarget = { date, type, sid };
+    }
+    const target = STATE.deleteTarget;
+    if (!target) return;
+    const w = WORKOUTS[target.type];
+    document.getElementById('modal-title').textContent = fmtDate(target.date);
+    document.getElementById('modal-sub').textContent = (w?.label || target.type) + ' · This cannot be undone.';
     document.getElementById('confirm-modal').classList.add('active');
   },
 
